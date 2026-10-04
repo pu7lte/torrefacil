@@ -1,14 +1,9 @@
 # Rust build artifacts
 target/
 
-# IDE and Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*.log
-*.tmp
+# Python cache
+__pycache__/
+*.pyc
 
-# OS specific files
-.DS_Store
-Thumbs.db
+# Backup files
+*.bak
