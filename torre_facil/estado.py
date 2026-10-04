@@ -200,7 +200,7 @@ def definir_base_global(df_erbs: pd.DataFrame) -> None:
     global _DF_BASE_GLOBAL
     _DF_BASE_GLOBAL = df_erbs
     INFO.base = df_erbs  # Backup da base no estado global (pesquisa global)
-    logger.warning(
+    logger.debug(
         "definir_base_global() está deprecated. Use AppContext em vez disso."
     )
     try:
@@ -219,7 +219,14 @@ def obter_base_global() -> pd.DataFrame | None:
     Returns:
         DataFrame com a base de estações, ou None se não carregada.
     """
-    logger.warning(
-        "obter_base_global() está deprecated. Use AppContext.df_erbs em vez disso."
-    )
-    return _DF_BASE_GLOBAL
+    if _DF_BASE_GLOBAL is not None:
+        return _DF_BASE_GLOBAL
+    # Fallback: a base pode ter sido registrada apenas em INFO.base
+    # (ex.: carregada via cache/CSV sem passar por definir_base_global).
+    base_info = getattr(INFO, "base", None)
+    if base_info is not None:
+        logger.debug(
+            "obter_base_global(): usando fallback INFO.base "
+            "(definir_base_global() não foi chamado)."
+        )
+    return base_info
