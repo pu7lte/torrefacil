@@ -363,7 +363,8 @@ pub fn baixar_zip_para(url: &str, destino: &Path) -> bool {
                     return false;
                 }
             };
-            let mut corpo = resp.into_body().reader();
+            let mut corpo_reader = resp.into_body();
+            let mut corpo = corpo_reader.as_reader();
             let mut buf = vec![0u8; 512 * 1024];
             loop {
                 let n = match corpo.read(&mut buf) {
@@ -1373,7 +1374,7 @@ pub fn inicializar_base_com_cache(escolha: Option<EscolhaBootstrap>) -> Result<(
 
 fn inicializar_com_cache_existente(tem_zip: bool, esc: EscolhaBootstrap) -> Result<(DataFrame, String), String> {
     let ts_ref = arquivo_mtime(&if tem_zip { arquivo_zip() } else { arquivo_cache() });
-    let dias_idade = (agora_unix() - ts_ref) / 86400;
+    let _dias_idade = (agora_unix() - ts_ref) / 86400;
     let g = snap_mod::quebrar_local(ts_ref);
     estado::info_set_data_atualizacao(&format!("{:02}/{:02}/{:04}", g[2], g[1], g[0]));
 
@@ -1586,7 +1587,7 @@ mod tests {
             "df_erbs": dataframe_para_json(&df),
             "total_setores": 10,
             "bairros_unificados": 3,
-            "data_geracao": snap_mod::quebrar_local(agora).into(),
+            "data_geracao": serde_json::json!(snap_mod::quebrar_local(agora)),
         });
         std::fs::write(arquivo_cache(), pacote.to_string()).unwrap();
         let (carregado, origem) = carregar_do_cache().unwrap();

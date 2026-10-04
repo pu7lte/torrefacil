@@ -1,1 +1,9 @@
-(empty)
+# Rust build artifacts
+target/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Backup files
+*.bak
