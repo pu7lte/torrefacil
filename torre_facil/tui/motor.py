@@ -2,9 +2,12 @@
 from __future__ import annotations
 
 import datetime
+import os
 import re
+import select
 import shutil
 import sys
+import time
 
 from ..config import DIAS_SEMANA
 from ..estado import INFO
@@ -33,18 +36,39 @@ def obter_dimensoes_terminal():
 
 
 # ✅ CORREÇÃO: alinhamentos sem espaços, padding com 1 espaço, regex substitui por ""
+def _cortar_largura(texto, largura):
+    """Trunca texto preservando a LARGURA VISUAL.
+
+    Caracteres de largura dupla (CJK e similares, classificados como
+    "Wide"/"Fullwidth" pela Unicode) contam 2 colunas; os demais contam 1.
+    O resultado nunca excede ``largura`` colunas visuais.
+    """
+    import unicodedata as _ud
+    acum = 0
+    saida = []
+    for ch in texto:
+        w = 2 if _ud.east_asian_width(ch) in ("W", "F") else 1
+        if acum + w > largura:
+            if acum < largura:
+                saida.append(" ")  # preenche a coluna restante
+            break
+        saida.append(ch)
+        acum += w
+    return "".join(saida)
+
+
 def ajustar_texto_puro(texto, largura, alinhamento="esq", truncar=True):
     # Remove códigos ANSI para calcular tamanho real
     limpo = RE_ANSI.sub("", str(texto))
-    
+
     if len(limpo) > largura:
         if truncar and largura > 3:
             # Truncamento simples: mantém exatamente `largura` caracteres,
             # com sufixo "..." sempre ao final (sem cortar em limite de
             # palavra nem completar com espaços).
-            limpo = limpo[:largura - 3] + "..."
+            limpo = _cortar_largura(limpo[:largura - 3], largura - 3) + "..."
         else:
-            limpo = limpo[:largura]
+            limpo = _cortar_largura(limpo, largura)
     
     faltam = max(0, largura - len(limpo))
     
@@ -118,6 +142,45 @@ def _modo_fundo_atual():
 
 
 # =========================================================================
+# Relógio em tempo real (hh:mm:ss) na barra de status inferior
+# =========================================================================
+
+_HORA_LINHA = None       # número da linha da barra de status inferior
+_HORA_COLUNA = None      # coluna onde a hora é desenhada
+
+
+def _tecla_pendente():
+    """Verifica (sem bloquear) se há tecla digitada aguardando leitura."""
+    try:
+        if os.name == "nt":
+            import msvcrt
+            return msvcrt.kbhit()
+        fd = sys.stdin.fileno()
+        if not sys.stdin.readable():
+            return False
+        return bool(select.select([fd], [], [], 0)[0])
+    except Exception:
+        return False
+
+
+def esperar_com_relogio(segundos, larg=None, alt=None):
+    """Espera ``segundos`` repintando o relógio hh:mm:ss a cada segundo.
+
+    Usado por telas de abertura (logo/splash) para manter a barra de
+    status inferior em tempo real enquanto aguardam uma ação do usuário.
+    Interrompe a espera se houver tecla pendente.
+    """
+    fim = time.monotonic() + max(0.0, float(segundos))
+    while time.monotonic() < fim:
+        restante = fim - time.monotonic()
+        time.sleep(min(0.2, max(0.0, restante)))
+        if _HORA_LINHA is not None:
+            redesenhar_relogio()
+        if _tecla_pendente():
+            break
+
+
+# =========================================================================
 # Desktop base
 # =========================================================================
 
@@ -127,16 +190,27 @@ def desenhar_desktop_base(larg, alt,
     agora = datetime.datetime.now()
     dia_sem = DIAS_SEMANA[agora.weekday()]
     data_str = f" {dia_sem}, {agora.strftime('%d/%m/%Y')} "
-    hora_str = f" {agora.strftime('%H:%M')} "
+    hora_str = f" {agora.strftime('%H:%M:%S')} "
 
-    # --- Cabeçalho linha 1 ---
+    # --- Cabeçalho linha 1: data (esq) │ título (centro) │ módulo (dir) ---
     centro_topo = "TORRE FÁCIL ERP v10.0"
     dir_topo = f" {INFO.modulo_atual[:24]} "
     espaco_centro = max(4, larg - len(data_str) - len(dir_topo) - 2)
     texto_centro = ajustar_texto_puro(centro_topo, espaco_centro, "centro")
-    linha_1 = f"{C.BARRA_STATUS_TOPO}{data_str}│{texto_centro}│{dir_topo}{C.RESET}"
+    linha_1 = (
+        f"{C.BARRA_STATUS_TOPO}"
+        f"{data_str}│{texto_centro}│{dir_topo}"
+        f"{' ' * max(0, larg - len(data_str) - len(texto_centro) - len(dir_topo) - 2)}"
+        f"{C.RESET}"
+    )
 
-    # --- Cabeçalho linha 2 ---
+    # --- Linha 2: menu superior (ocupa toda a largura da janela) ---
+    if mostrar_menu:
+        linha_2 = renderizar_menu_superior_fixo(larg, INFO.modulo_atual)
+    else:
+        linha_2 = f"{C.FUNDO_DESKTOP}{' ' * larg}{C.RESET}"
+
+    # --- Linha 3: sub-barra com dados da base ---
     esq_sub = f" Base: {INFO.data_atualizacao} ({INFO.origem[:32]}) "
     if INFO.erbs > 0:
         dir_sub = (f" {INFO.erbs:,} ERBs │ {INFO.municipios:,} Mun. │ "
@@ -144,19 +218,13 @@ def desenhar_desktop_base(larg, alt,
     else:
         dir_sub = " Inicializando sistema "
     esp_meio_sub = max(0, larg - len(esq_sub) - len(dir_sub))
-    linha_2 = (
+    linha_3 = (
         f"{C.BARRA_SUB_TOPO}{esq_sub[:larg]}{C.RESET}"
         f"{C.FUNDO_DESKTOP}{' ' * esp_meio_sub}{C.RESET}"
         f"{C.BARRA_SUB_TOPO}{dir_sub[:max(0, larg - len(esq_sub))]}{C.RESET}"
     )
 
-    # --- Linha 3: menu (ou vazio) ---
-    if mostrar_menu:
-        linha_3 = renderizar_menu_superior_fixo(larg, INFO.modulo_atual)
-    else:
-        linha_3 = f"{C.FUNDO_DESKTOP}{' ' * larg}{C.RESET}"
-
-    # --- Rodapé ---
+    # --- Rodapé (hora em tempo real hh:mm:ss à direita) ---
     larg_msg = max(10, larg - len(hora_str) - 1)
     msg_ajustada = ajustar_texto_puro(f" {msg_rodape}", larg_msg, "esq")
     linha_rodape = f"{C.BARRA_STATUS_TOPO}{msg_ajustada}│{hora_str}{C.RESET}"
@@ -176,7 +244,31 @@ def desenhar_desktop_base(larg, alt,
             f"\033[{r};1H{C.FUNDO_DESKTOP}{padrao}{C.RESET}"
         )
     comandos.append(f"\033[{alt};1H{linha_rodape}")
+
+    # Registra a posição do relógio para atualização em tempo real
+    global _HORA_LINHA, _HORA_COLUNA
+    _HORA_LINHA = alt
+    _HORA_COLUNA = max(1, larg - len(hora_str) + 1)
     return comandos
+
+
+def redesenhar_relogio():
+    """Repinta o relógio hh:mm:ss na barra de status inferior.
+
+    Deve ser chamada após ``renderizar_quadro_completo`` para manter a
+    hora em tempo real sem redesenhar a tela inteira. Não faz nada se o
+    desktop base ainda não foi desenhado nesta sessão.
+    """
+    if _HORA_LINHA is None or _HORA_COLUNA is None:
+        return False
+    agora = datetime.datetime.now().strftime("%H:%M:%S")
+    texto = f" {agora} "
+    col = max(1, _HORA_COLUNA)
+    sys.stdout.write(
+        f"\033[{_HORA_LINHA};{col}H{C.BARRA_STATUS_TOPO}{texto}{C.RESET}"
+    )
+    sys.stdout.flush()
+    return True
 
 
 # ✅ CORREÇÃO: Limpar área da janela antes de desenhar
