@@ -146,10 +146,12 @@ def _normalizar_str(s: str) -> str:
         String normalizada (uppercase, sem acentos, sem BOM).
     """
     limpo = s.replace("\ufeff", "").strip().upper()
-    return "".join(
+    sem_acentos = "".join(
         c for c in unicodedata.normalize("NFD", limpo)
         if unicodedata.category(c) != "Mn"
     )
+    # Colapsa múltiplos espaços em branco (incl. tab/quebra de linha) em um só
+    return " ".join(sem_acentos.split())
 
 
 def normalizar_texto(txt: str | float | pd.Series | None) -> str:

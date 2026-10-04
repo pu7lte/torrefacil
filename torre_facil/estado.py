@@ -75,6 +75,9 @@ class EstatisticasBase:
     origem: str = "AGUARDANDO CARGA..."
     podio_completo: list[str] = field(default_factory=list)
     podio_contexto: str = ""
+    modulo_atual: str = "INICIALIZAÇÃO"
+    ultimo_erro: str = ""
+    base: pd.DataFrame | None = None
 
     def resumo_formatado(self) -> str:
         """Retorna resumo legível das estatísticas para exibição na TUI."""
@@ -176,8 +179,11 @@ class AppContext:
 # ---------------------------------------------------------------------------
 
 # ⚠️ DEPRECATED: Mantido apenas para compatibilidade durante a migração.
-# Use AppContext em vez disso.
-INFO = EstatisticasBase()
+# ``EstadoSistema`` é o nome histórico da classe de estado global; hoje os
+# campos vivem em ``EstatisticasBase``. Use AppContext em vez disso.
+EstadoSistema = EstatisticasBase
+
+INFO = EstadoSistema()
 
 _DF_BASE_GLOBAL: pd.DataFrame | None = None
 
@@ -193,6 +199,7 @@ def definir_base_global(df_erbs: pd.DataFrame) -> None:
     """
     global _DF_BASE_GLOBAL
     _DF_BASE_GLOBAL = df_erbs
+    INFO.base = df_erbs  # Backup da base no estado global (pesquisa global)
     logger.warning(
         "definir_base_global() está deprecated. Use AppContext em vez disso."
     )
