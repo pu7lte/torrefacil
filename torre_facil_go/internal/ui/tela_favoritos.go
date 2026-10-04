@@ -47,5 +47,3 @@ func (m Model) teclaFavoritos(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 func NormalizarParaBusca(s string) string {
 	return s
 }
-
-var _ = key.IsPressed
