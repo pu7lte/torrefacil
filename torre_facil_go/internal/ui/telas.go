@@ -238,6 +238,10 @@ func (m *Model) abrirListaERBs(titulo string, regs []data.Erb, voltar Tela) {
 }
 
 func (m Model) teclaListaErbs(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// favoritos (modo loja): lista própria, sem registros de ERB
+	if m.listaTit == "FAVORITOS" {
+		return m.teclaFavoritos(k)
+	}
 	n := len(m.listaRegs)
 	switch k.Type {
 	case tea.KeyEscape:
@@ -262,6 +266,23 @@ func (m Model) teclaListaErbs(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) viewListaErbs() string {
+	// tela de favoritos (modo loja): linhas "N. APELIDO  ENDEREÇO"
+	if m.listaTit == "FAVORITOS" {
+		favs := CarregarFavoritos()
+		var ls []string
+		ls = append(ls, CaixaTitulo.Render(trunc(" FAVORITOS ("+fmt.Sprint(len(favs))+") ", m.width)))
+		if len(favs) == 0 {
+			ls = append(ls, CaixaTexto.Render("  Nenhum favorito salvo. Use a TUI Python para cadastrar endereços."))
+		}
+		for i, f := range favs {
+			st, marca := CaixaTexto, "  "
+			if i == m.favIdx {
+				st, marca = CaixaSelecao, "> "
+			}
+			ls = append(ls, st.Render(trunc(marca+LinhaFavorito(i, f), m.width)))
+		}
+		return strings.Join(ls, "\n")
+	}
 	var ls []string
 	ls = append(ls, CaixaTitulo.Render(trunc(" "+m.listaTit+" ("+fmt.Sprint(len(m.listaRegs))+") ", m.width)))
 	fim := m.listaScroll + linhasVisiveis
@@ -315,6 +336,30 @@ func (m Model) viewRanking() string {
 	}
 	ls = append(ls, CaixaCiano.Render(trunc(" ↑/↓ navegar | ENTER ver municípios da UF | Esc voltar", m.width)))
 	return strings.Join(ls, "\n")
+}
+
+// ufsOrdenadasPorQtd retorna as UFs na mesma ordem do ranking (desc por ERBs),
+// garantindo consistência entre teclas e renderização.
+func (m Model) ufsOrdenadasPorQtd() []string {
+	type kv struct {
+		K string
+		V int
+	}
+	var pares []kv
+	for k, v := range m.Snap.PorUF {
+		pares = append(pares, kv{k, v})
+	}
+	sort.Slice(pares, func(i, j int) bool {
+		if pares[i].V != pares[j].V {
+			return pares[i].V > pares[j].V
+		}
+		return pares[i].K < pares[j].K
+	})
+	out := make([]string, len(pares))
+	for i, p := range pares {
+		out[i] = p.K
+	}
+	return out
 }
 
 // ---------------------------------------------------------------------------
