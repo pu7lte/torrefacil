@@ -671,6 +671,26 @@ def navegador_tui(
         if tecla in ("F12", "CTRL_F12"):
             raise AbrirMenuOutroModo()
 
+        # F10: abre o menu na primeira categoria (Arquivo). A barra já é
+        # desenhada pelo desktop base — aqui apenas sobrescrevemos a linha
+        # 2 com o estado ativo, sem duplicar a barra.
+        if tecla == "F10":
+            resultado = _tratar_tecla_menu("F10", modulo, teclas_rapidas, df_base)
+            if resultado is not None:
+                tipo, valor = resultado
+                if tipo == _ACAO_LOGO:
+                    return (_ACAO_LOGO, None, pos_cursor_lista, offset_scroll)
+                if tipo == "PENDENTE":
+                    tecla_pendente = valor
+                    continue
+                if tipo == "ACAO_MENU":
+                    _tratar_acao_menu(
+                        valor, modulo, indices_sel, altura_viewport,
+                        max_scroll, total_linhas
+                    )
+                    continue
+            continue
+
         t_up = tecla.upper() if len(tecla) == 1 else tecla
 
         if t_up == "X" and "X" not in teclas_rapidas:

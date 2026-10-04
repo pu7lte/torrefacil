@@ -808,18 +808,8 @@ def menu_popup_centralizado(modulo, titulo_caixa, itens_menu,
         miolo = larg_box - 4
         idx_destaque = indices_sel[pos_cursor] if (indices_sel and pos_cursor >= 0) else -1
         linhas_box = []
-        if titulo_caixa:
-            tit_limpo = f" {titulo_caixa.strip()} "
-            if len(tit_limpo) > larg_box - 4:
-                tit_limpo = tit_limpo[:larg_box - 4]
-            tracos_esq = (larg_box - 2 - len(tit_limpo)) // 2
-            tracos_dir = (larg_box - 2) - len(tit_limpo) - tracos_esq
-            linhas_box.append(
-                f"{C.CAIXA_BORDA}╭{'─' * tracos_esq}{C.CAIXA_TITULO}{tit_limpo}"
-                f"{C.CAIXA_BORDA}{'─' * tracos_dir}╮{C.RESET}"
-            )
-        else:
-            linhas_box.append(f"{C.CAIXA_BORDA}╭{'─' * (larg_box - 2)}{C.RESET}")
+        # (título tratado adiante, com largura exata da caixa)
+        linhas_box.append("")
         for i, item in enumerate(itens_menu):
             if item.get("divisor"):
                 linhas_box.append(f"{C.CAIXA_BORDA}├{'─' * (larg_box - 2)}┤{C.RESET}")
@@ -837,6 +827,25 @@ def menu_popup_centralizado(modulo, titulo_caixa, itens_menu,
                     f"{C.CAIXA_BORDA}│ {cor_it}{txt_puro}{C.CAIXA_BORDA} │{C.RESET}"
                 )
         linhas_box.append(f"{C.CAIXA_BORDA}╰{'─' * (larg_box - 2)}╯{C.RESET}")
+
+        # ✅ CORREÇÃO: título centralizado com LARGURA EXATA — evita que a
+        # linha fique mais curta/longa que as demais e "quebre" as bordas
+        if titulo_caixa:
+            tit_limpo = f" {titulo_caixa.strip()} "
+            esp_interno = larg_box - 2
+            if len(tit_limpo) > esp_interno - 2:
+                tit_limpo = tit_limpo[:esp_interno - 2]
+            tracos_esq = max(1, (esp_interno - len(tit_limpo)) // 2)
+            tracos_dir = max(1, esp_interno - len(tit_limpo) - tracos_esq)
+            linhas_box[0] = (
+                f"{C.CAIXA_BORDA}╭{'─' * tracos_esq}{C.CAIXA_TITULO}{tit_limpo}"
+                f"{C.CAIXA_BORDA}{'─' * tracos_dir}╮{C.RESET}"
+            )
+        else:
+            linhas_box[0] = (
+                f"{C.CAIXA_BORDA}╭{'─' * (larg_box - 2)}╮{C.RESET}"
+            )
+
         canvas = desenhar_desktop_base(larg_t, alt_t, msg_rodape=msg_rodape)
         sobrepor_janela_no_canvas(canvas, larg_t, alt_t, linhas_box, larg_box, sombra=True)
         renderizar_quadro_completo(canvas)
@@ -848,6 +857,11 @@ def menu_popup_centralizado(modulo, titulo_caixa, itens_menu,
             continue
         if tecla in ("F12", "CTRL_F12"):
             raise AbrirMenuOutroModo()
+        # F10: alterna a visibilidade da barra de menu (não desenha outra)
+        if tecla == "F10":
+            from .menu_barra import alternar_barra_menu
+            alternar_barra_menu()
+            continue
         t_up = tecla.upper() if len(tecla) == 1 else tecla
         if t_up == "X" and not any(it.get("dados") == "X" for it in itens_menu):
             raise KeyboardInterrupt

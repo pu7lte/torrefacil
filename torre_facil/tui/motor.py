@@ -12,7 +12,7 @@ import time
 from ..config import DIAS_SEMANA
 from ..estado import INFO
 from . import cores as C
-from .menu_barra import renderizar_menu_superior_fixo
+from .menu_barra import renderizar_menu_superior_fixo, barra_visivel
 
 # ✅ CORREÇÃO: regex ANSI correta (sem colchetes duplos)
 RE_ANSI = re.compile(r"\x1b\[[0-9;]*[a-zA-Z]")
@@ -205,7 +205,7 @@ def desenhar_desktop_base(larg, alt,
     )
 
     # --- Linha 2: menu superior (ocupa toda a largura da janela) ---
-    if mostrar_menu:
+    if mostrar_menu and barra_visivel():
         linha_2 = renderizar_menu_superior_fixo(larg, INFO.modulo_atual)
     else:
         linha_2 = f"{C.FUNDO_DESKTOP}{' ' * larg}{C.RESET}"
