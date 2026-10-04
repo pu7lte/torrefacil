@@ -1,6 +1,14 @@
-# Python
-__pycache__/
-*.pyc
-
-# Rust
+# Rust build artifacts
 target/
+
+# IDE and Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*.log
+*.tmp
+
+# OS specific files
+.DS_Store
+Thumbs.db

@@ -21,3 +21,4 @@ pub mod dicionarios;
 pub mod estado;
 pub mod pesquisa_global;
 pub mod texto;
+pub mod tui;
