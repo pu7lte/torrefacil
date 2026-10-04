@@ -88,12 +88,28 @@ impl DataFrame {
 
     /// Adiciona/substitui uma coluna inteira (`df[col] = serie`).
     pub fn set_coluna(&mut self, nome: &str, valores: Vec<Cell>) {
+        assert_eq!(
+            valores.len(),
+            self.len(),
+            "set_coluna({nome}): {} valores para {} linhas",
+            valores.len(),
+            self.len()
+        );
         if let Some(i) = self.idx(nome).ok() {
             self.dados[i] = valores;
         } else {
             self.colunas.push(nome.to_string());
             self.dados.push(valores);
         }
+    }
+
+    /// `df.drop(columns=[nome])` — remove a coluna se existir.
+    pub fn remover_coluna(mut self, nome: &str) -> DataFrame {
+        if let Some(i) = self.idx(nome).ok() {
+            self.colunas.remove(i);
+            self.dados.remove(i);
+        }
+        self
     }
 
     /// Cria DataFrame a partir de registros (lista de mapas), preservando ordem

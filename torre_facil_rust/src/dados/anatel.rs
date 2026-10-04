@@ -517,7 +517,10 @@ pub fn etapa_mapear_colunas(todas_colunas: &[String]) -> Result<MapaColunas, Str
         c
     };
 
-    // Essenciais
+    // Essenciais. O Python mapeia "uf" PRIMEIRO com parciais ["SIGLA_UF",
+    // "SIGLAUF", "UF"]; num CSV sem coluna UF dedicada isso captura
+    // "Município-UF" (contém "UF"). Nesse caso o valor real de UF vem depois
+    // da regex sobre o município — ver `etapa_processar_tecnologias`.
     mapa.insert("uf".into(), pick(&["UF", "SIGLAUF", "SIGLA_UF"], &["SIGLA_UF", "SIGLAUF", "UF"]));
     mapa.insert("mun".into(), pick(&["Município-UF", "MUNICIPIO", "NOMEMUNICIPIO"], &["MUNICIPIO", "CIDADE", "MUNICÍPIO"]));
     mapa.insert("estacao".into(), pick(&["Número Estação", "NUMESTACAO", "NUMEROESTACAO"], &["ESTACAO", "ESTAÇÃO"]));
@@ -578,7 +581,7 @@ fn serie_strip(df: &DataFrame, nome: Option<&String>) -> Vec<String> {
 }
 
 /// Etapa 4: consolida tecnologias 2G/3G/4G/5G (`_etapa_processar_tecnologias`).
-pub fn etapa_processar_tecnologias(df: DataFrame, mapa: &MapaColunas) -> DataFrame {
+pub fn etapa_processar_tecnologias(mut df: DataFrame, mapa: &MapaColunas) -> DataFrame {
     progresso(25, "CONSOLIDANDO TECNOLOGIAS (2G/3G/4G/5G)", "Provisionando setores e subindo portadoras...", "");
     let n = df.len();
     let col_tec = get_m(mapa, "tec").cloned();
@@ -595,6 +598,30 @@ pub fn etapa_processar_tecnologias(df: DataFrame, mapa: &MapaColunas) -> DataFra
         (None, None) => vec![String::new(); n],
     };
 
+    // Pré-condição (pipeline): materializa a coluna canônica "UF" ANTES do
+    // primeiro filtro, replicando a ordem do pandas — que resolve `colunas` e
+    // `mapa` na etapa 2 e só então roda as etapas. Assim, quando o mapa apontou
+    // "uf" para a coluna de município (parcial "UF" em "Município-UF") ou não
+    // achou coluna UF, o valor real vem do sufixo "-XX" via regex — igual ao
+    // fallback `str.extract(r"-\s*([A-Za-z]{2})$")` da etapa 5 em Python.
+    {
+        let uf_col = get_m(mapa, "uf").cloned();
+        let mun_col = get_m(mapa, "mun").cloned();
+        let dedicada = match (&uf_col, &mun_col) {
+            (Some(u), m) => m.as_deref() != Some(u.as_str()),
+            (None, _) => false,
+        };
+        if !dedicada {
+            let re_uf = Regex::new(r"-\s*([A-Za-z]{2})$").unwrap();
+            let mun_raw = serie_strip(&df, mun_col.as_ref());
+            let uf_vals: Vec<String> = mun_raw
+                .iter()
+                .map(|s| re_uf.captures(s).map(|c| c[1].to_uppercase()).unwrap_or_default())
+                .collect();
+            df.set_coluna("UF", uf_vals.into_iter().map(Cell::String).collect());
+        }
+    }
+
     let mut mapa_tec: HashMap<String, String> = HashMap::new();
     let siglas: Vec<String> = tec_combinada
         .iter()
@@ -607,24 +634,20 @@ pub fn etapa_processar_tecnologias(df: DataFrame, mapa: &MapaColunas) -> DataFra
         .collect();
 
     let mask: Vec<bool> = siglas.iter().map(|s| !s.is_empty()).collect();
-    let mut df2 = df.filtrar_mask(&mask);
-    let siglas_filtradas: Vec<String> = (0..n).zip(siglas).filter(|(i, _)| mask[*i]).map(|(_, s)| s).collect();
-    df2.set_coluna("TEC_SIGLA", siglas_filtradas.into_iter().map(Cell::String).collect());
+    // pandas: df["TEC_SIGLA"] = serie (alinhada por índice) e SÓ então
+    // df = df[df["TEC_SIGLA"] != ""] — o filtro remove as linhas descartadas.
+    let mut df2 = df;
+    df2.set_coluna("TEC_SIGLA", siglas.into_iter().map(Cell::String).collect());
+    df2 = df2.filtrar_mask(&mask);
 
     // drop colunas originais de tecnologia
     for c_drop in [col_tec, col_ger].into_iter().flatten() {
-        df2 = remover_coluna(df2, &c_drop);
+        df2 = df2.remover_coluna(&c_drop);
     }
     df2
 }
 
-fn remover_coluna(mut df: DataFrame, nome: &str) -> DataFrame {
-    if let Some(i) = df.colunas.iter().position(|c| c == nome) {
-        df.colunas.remove(i);
-        df.dados.remove(i);
-    }
-    df
-}
+
 
 /// Etapa 5: município, operadora e UF (`_etapa_processar_municipio_operadora_uf`).
 pub fn etapa_processar_municipio_operadora_uf(mut df: DataFrame, mapa: &MapaColunas) -> DataFrame {
@@ -646,22 +669,6 @@ pub fn etapa_processar_municipio_operadora_uf(mut df: DataFrame, mapa: &MapaColu
         df.set_coluna("OPERADORA", op.into_iter().map(Cell::String).collect());
     }
 
-    if let Some(uf) = get_m(mapa, "uf") {
-        let v: Vec<String> = serie_strip(&df, Some(uf)).into_iter().map(|s| s.to_uppercase()).collect();
-        df.set_coluna("UF", v.into_iter().map(Cell::String).collect());
-    } else {
-        // regex: r"-\s*([A-Za-z]{2})$" sobre MUNICIPIO, senão ""
-        let re = Regex::new(r"-\s*([A-Za-z]{2})$").unwrap();
-        let muns = df.coluna("MUNICIPIO");
-        let uf: Vec<String> = muns
-            .iter()
-            .map(|v| {
-                let s = celula_para_str(v);
-                re.captures(&s).map(|c| c[1].to_uppercase()).unwrap_or_default()
-            })
-            .collect();
-        df.set_coluna("UF", uf.into_iter().map(Cell::String).collect());
-    }
     df
 }
 
@@ -1014,7 +1021,7 @@ pub fn etapa_converter_gps(mut df_erbs: DataFrame) -> DataFrame {
     df_erbs.set_coluna("GPS", gps);
 
     for c in ["BAIRRO_RAW", "LOGR_RAW", "LAT_RAW", "LON_RAW"] {
-        df_erbs = remover_coluna(df_erbs, c);
+        df_erbs = df_erbs.remover_coluna(c);
     }
     df_erbs
 }
@@ -1541,6 +1548,10 @@ mod tests {
         let df = etapa_processar_tecnologias(df, &mapa);
         assert_eq!(df.len(), 3);
         let df = etapa_processar_municipio_operadora_uf(df, &mapa);
+        assert_eq!(df.celula(0, "UF"), json!("RN"));
+        assert_eq!(df.celula(0, "MUNICIPIO"), json!("MOSSORÓ-RN"));
+        assert_eq!(df.celula(0, "OPERADORA"), json!("CLARO"));
+        assert_eq!(df.celula(0, "NUM_ESTACAO"), json!("1234"));
         let df = etapa_desduplicar(df);
         let df = etapa_preparar_enderecos_coordenadas(df, &mapa);
         let erbs = etapa_agrupar_erbs(df, &mapa);
