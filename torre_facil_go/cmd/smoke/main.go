@@ -19,6 +19,9 @@ p := tea.NewProgram(m)
 go func() {
 // injeta eventos como um usuário: resize, F10, navegação, Enter, busca, Esc, X
 p.Send(tea.WindowSizeMsg{Width: 100, Height: 30})
+p.Send(tea.KeyMsg{Type: tea.KeyEnter})          // logo -> menu principal
+p.Send(tea.KeyMsg{Type: tea.KeyEscape})         // menu -> volta ao logo (legado)
+p.Send(tea.KeyMsg{Type: tea.KeyEnter})          // logo -> menu de novo
 p.Send(tea.KeyMsg{Type: tea.KeyF10})            // mostra barra
 p.Send(tea.KeyMsg{Type: tea.KeyF10})            // esconde (sem duplicar)
 p.Send(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("A")}) // atalho analista -> lista UF

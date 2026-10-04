@@ -17,7 +17,8 @@ import (
 type Tela int
 
 const (
-	TelaMenu Tela = iota
+	TelaLogo Tela = iota // tela de abertura persistente (espelho janelas.tela_logo)
+	TelaMenu
 	TelaRaioXUf
 	TelaRaioXMun
 	TelaFaixaUf
@@ -162,10 +163,11 @@ func NewModel(snap *data.Snapshot, modo Modo) Model {
 	ti.CharLimit = 48
 	m := Model{
 		Snap: snap, modo: modo,
-		tela: TelaMenu, ufIdx: 0, faixaIdx: 0,
+		tela: TelaLogo, ufIdx: 0, faixaIdx: 0,
 		barraAberta: -1, agora: time.Now(),
-		resumo: snap.ResumoStatus(),
-		busca:  ti,
+		resumo:    snap.ResumoStatus(),
+		busca:     ti,
+		msgRodape: "X = Sair  │  ESC = Ficar no logo  │  ENTER = Abrir o menu",
 	}
 	m.atualizarItensMenu()
 	return m
@@ -301,6 +303,24 @@ func (m Model) tratarTecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch m.tela {
+	case TelaLogo:
+		switch k.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEsc:
+			// legado: ESC fica no logo
+			return m, nil
+		case tea.KeyEnter, tea.KeySpace:
+			m.tela = TelaMenu
+			m.menuIdx = primeiroSelecionavel(m.itensMenu, 0)
+			m.msgRodape = "TORRE FÁCIL — menu principal (setas + Enter)."
+		default:
+			up := strings.ToUpper(k.String())
+			if up == "X" || k.Type == tea.KeyCtrlD {
+				return m, tea.Quit
+			}
+		}
+		return m, nil
 	case TelaMenu:
 		return m.teclaMenu(k)
 	case TelaRaioXUf, TelaFaixaUf:
@@ -366,7 +386,8 @@ func (m Model) teclaMenu(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.modo == ModoLoja {
 			return m, tea.Quit // modo loja encerra como "X. Fim de Operação"
 		}
-		m.msgRodape = "Voltando à tela de logo."
+		m.tela = TelaLogo // legado: ESC/V volta à tela de logo
+		m.msgRodape = "X = Sair  │  ESC = Ficar no logo  │  ENTER = Abrir o menu"
 		return m, nil
 	case tea.KeyUp:
 		m.moverMenu(-1)
@@ -392,8 +413,8 @@ func (m Model) executar(codigo string) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 	case "V":
 		m.menuIdx = 0
-		m.msgRodape = "TORRE FÁCIL — tela de logo (use o menu abaixo)."
-		m.tela = TelaMenu
+		m.tela = TelaLogo
+		m.msgRodape = "X = Sair  │  ESC = Ficar no logo  │  ENTER = Abrir o menu"
 	case "0", "M":
 		m.abrirManutencao()
 	case "1", "2", "R": // raio-x cidade (ranking estado vira lista de UF aqui)
@@ -666,6 +687,8 @@ func (m Model) viewDropdown() string {
 
 func (m Model) viewTela() string {
 	switch m.tela {
+	case TelaLogo:
+		return m.viewLogo()
 	case TelaForm:
 		return m.viewForm()
 	case TelaPainel:

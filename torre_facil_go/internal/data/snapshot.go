@@ -176,6 +176,15 @@ func (s *Snapshot) UFs() []string { return ChavesOrdenadasInt(s.PorUF) }
 // Operadoras ordenadas presentes na base.
 func (s *Snapshot) Operadoras() []string { return ChavesOrdenadasInt(s.PorOperadora) }
 
+// MunicipiosUnicos conta municípios distintos (chave "mun|uf") na base.
+func (s *Snapshot) MunicipiosUnicos() int {
+	unicos := map[string]struct{}{}
+	for _, r := range s.Registros {
+		unicos[r.Municipio+"|"+r.UF] = struct{}{}
+	}
+	return len(unicos)
+}
+
 // ResumoStatus gera texto de status da base (barra superior).
 func (s *Snapshot) ResumoStatus() string {
 	return fmt.Sprintf("Base ANATEL %s | %d ERBs | %d setores",
