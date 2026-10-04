@@ -393,6 +393,12 @@ def pesquisa_global_tui(
         if tecla is None or tecla == "IGNORE":
             continue
 
+        # F10: alterna a visibilidade da barra de menu (não desenha outra)
+        if tecla == "F10":
+            from .tui.menu_barra import alternar_barra_menu
+            alternar_barra_menu()
+            continue
+
         t_up = tecla.upper() if len(tecla) == 1 else tecla
 
         # Processa teclas

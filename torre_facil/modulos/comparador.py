@@ -386,6 +386,12 @@ def _tratar_tecla_construtor(
 
     t_up = tecla.upper() if len(tecla) == 1 else tecla
 
+    # F10: alterna a visibilidade da barra de menu (não desenha outra)
+    if tecla == "F10":
+        from ..tui.menu_barra import alternar_barra_menu
+        alternar_barra_menu()
+        return None
+
     # Menu de contexto
     cat = indice_menu_por_tecla(t_up, _MODULO)
     if cat is None and t_up == "F":

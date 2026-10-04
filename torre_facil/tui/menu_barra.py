@@ -43,6 +43,29 @@ ACOES_MENU_PARA_TECLA: dict[str, str] = {
     "REMOVE": "R",
 }
 
+# Estado global: barra de menu visível (alternado com F10)
+_BARRA_VISIVEL: bool = True
+
+
+def barra_visivel() -> bool:
+    """Retorna True se a barra de menu superior está visível."""
+    return _BARRA_VISIVEL
+
+
+def alternar_barra_menu(mostrar: bool | None = None) -> bool:
+    """Alterna (ou define) a visibilidade da barra de menu superior.
+
+    Args:
+        mostrar: True/False para definir explicitamente; None alterna.
+
+    Returns:
+        Estado resultante da visibilidade.
+    """
+    global _BARRA_VISIVEL
+    _BARRA_VISIVEL = (not _BARRA_VISIVEL) if mostrar is None else bool(mostrar)
+    return _BARRA_VISIVEL
+
+
 # Conjuntos de ações habilitadas por contexto
 ACOES_MENU_BASICAS: frozenset[str] = frozenset({
     "GLOBAL_SEARCH", "HELP", "ABOUT", "CLOSE", "REDRAW", "FIRST", "LAST",
@@ -181,18 +204,26 @@ def montar_menus(modulo: str = "") -> list[dict[str, Any]]:
 # Mapeamento de tecla → índice do menu
 # ---------------------------------------------------------------------------
 
-def indice_menu_por_tecla(tecla: str, modulo: str = "") -> int | None:
+def indice_menu_por_tecla(
+    tecla: str,
+    modulo: str = "",
+    permitir_f10: bool = False,
+) -> int | None:
     """Mapeia ALT+letra → índice do menu.
 
     Args:
         tecla: Tecla pressionada (ex: "ALT_A", "F10").
         modulo: Nome do módulo.
+        permitir_f10: Se True, "F10" abre o primeiro menu (retorna 0).
+            Por padrão F10 NÃO é tratado aqui — quem trata é o loop da
+            tela (alternância de visibilidade da barra), evitando que a
+            barra seja desenhada em duplicidade.
 
     Returns:
         Índice do menu (0-based), ou None se não encontrado.
     """
     if tecla == "F10":
-        return 0
+        return 0 if permitir_f10 else None
 
     if isinstance(tecla, str) and tecla.startswith("ALT_") and len(tecla) > 4:
         letra = normalizar_texto(tecla[4:])
