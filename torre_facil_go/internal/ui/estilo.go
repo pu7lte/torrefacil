@@ -28,6 +28,12 @@ var (
 	CaixaAmarelo = lipgloss.NewStyle().Bold(true).Foreground(c256(227)).Background(c256(17))
 	CaixaSelecao = lipgloss.NewStyle().Bold(true).Foreground(c256(232)).Background(c256(250))
 
+	// Logo (degradê da tela de abertura — portado de cores.py: LOGO_AZUL/CIANO/VERDE/CINZA)
+	LogoAzul  = lipgloss.NewStyle().Bold(true).Foreground(c256(117)).Background(c256(17))
+	LogoCiano = lipgloss.NewStyle().Bold(true).Foreground(c256(159)).Background(c256(17))
+	LogoVerde = lipgloss.NewStyle().Bold(true).Foreground(c256(120)).Background(c256(17))
+	LogoCinza = lipgloss.NewStyle().Foreground(c256(246)).Background(c256(17))
+
 	// Alertas
 	BarraAlerta = lipgloss.NewStyle().Bold(true).Foreground(c256(232)).Background(c256(222))
 	BarraVerde  = lipgloss.NewStyle().Bold(true).Foreground(c256(232)).Background(c256(120))
