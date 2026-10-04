@@ -92,7 +92,7 @@ func (m Model) teclaRodovias(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case tea.KeyUp:
 			m.rodoIdx = maxInt(0, m.rodoIdx-1)
 		case tea.KeyDown:
-			m.rodoIdx = minInt(len(brsConhecidas)-1, m.rodoIdx+1)
+			m.rodoIdx = minint(len(brsConhecidas)-1, m.rodoIdx+1)
 		case tea.KeyEnter:
 			m.rodoUF = "TODOS"
 		}
@@ -175,7 +175,7 @@ func (m Model) teclaFAQ(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyUp:
 		m.faqIdx = maxInt(0, m.faqIdx-1)
 	case tea.KeyDown:
-		m.faqIdx = minInt(len(perguntasFAQ)-1, m.faqIdx+1)
+		m.faqIdx = minint(len(perguntasFAQ)-1, m.faqIdx+1)
 	case tea.KeyEnter:
 		return m.executarFAQ(perguntasFAQ[m.faqIdx].Acao), nil
 	default:
@@ -204,9 +204,9 @@ func (m Model) viewFAQ() string {
 	ls = append(ls, CaixaTitulo.Render(pad(" PERGUNTAS FREQUENTES DO CLIENTE ", m.width)))
 	ls = append(ls, criarDivisor(m.width))
 	for i, p := range perguntasFAQ {
-		st, marca := CaixaTexto, "  "
+		st := CaixaTexto
 		if i == m.faqIdx {
-			st, marca = CaixaSelecao, "> "
+			st = CaixaSelecao
 		}
 		ls = append(ls, st.Render(trunc(fmt.Sprintf(" [%s] %s", p.Atalho, p.Texto), m.width)))
 	}
@@ -243,8 +243,8 @@ func (m Model) teclaManutencao(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyUp:
 		m.manutIdx = maxInt(0, m.manutIdx-1)
 	case tea.KeyDown:
-		m.manutIdx = minInt(len(itensManutencao)-1, m.manutIdx+1)
-	case tea.KeyEnter, tea.KeyRune:
+		m.manutIdx = minint(len(itensManutencao)-1, m.manutIdx+1)
+	case tea.KeyEnter:
 		it := itensManutencao[m.manutIdx]
 		switch it.Codigo {
 		case "STATUS":
@@ -289,7 +289,7 @@ func (m Model) viewManutencao() string {
 }
 
 func criarDivisor(w int) string {
-	return CaixaTexto.Render(strings.Repeat("─", minInt(40, w)))
+	return CaixaTexto.Render(strings.Repeat("─", minint(40, w)))
 }
 
 func runewidthWidth(s string) int { return visualWidth(s) }
