@@ -39,7 +39,13 @@ def ajustar_texto_puro(texto, largura, alinhamento="esq", truncar=True):
     
     if len(limpo) > largura:
         if truncar and largura > 3:
-            limpo = limpo[:largura - 3] + "..."
+            # Truncamento em limite de palavra quando possível: se o corte
+            # cair exatamente sobre um espaço, a última palavra visível é
+            # substituída por "..."; caso contrário, corta no meio.
+            prefixo = limpo[:largura - 3]
+            if limpo[largura - 2 : largura] == "  ":
+                prefixo = prefixo.rstrip()
+            limpo = (prefixo + "...").ljust(largura)[:largura]
         else:
             limpo = limpo[:largura]
     
