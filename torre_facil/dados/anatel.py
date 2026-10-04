@@ -1194,6 +1194,11 @@ def _atualizar_telemetria_global(
     INFO.setores = total_setores
     INFO.origem = origem_str
 
+    # Registra a base no estado global para módulos que consultam a base
+    # sem receber o DataFrame como parâmetro (busca global "/", menus, etc.).
+    from ..estado import definir_base_global
+    definir_base_global(df_erbs)
+
     if data_atualizacao:
         INFO.data_atualizacao = data_atualizacao
 
