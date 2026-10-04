@@ -12,7 +12,7 @@ import sys
 import time
 
 from ..config import SPLASH_DELAY
-from ..estado import INFO, AbrirMenuOutroModo
+from ..estado import INFO, AbrirMenuOutroModo, base_do_contexto
 from ..texto import normalizar_texto
 from . import cores as C
 from .motor import (
@@ -866,7 +866,7 @@ def menu_popup_centralizado(modulo, titulo_caixa, itens_menu,
             continue
         if tecla == "/":
             from ..pesquisa_global import pesquisa_global_tui
-            pesquisa_global_tui()
+            pesquisa_global_tui(base_do_contexto())
             continue
         if t_up in mapa_atalhos:
             nova_pos, dados_ret = mapa_atalhos[t_up]

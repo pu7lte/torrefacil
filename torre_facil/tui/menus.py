@@ -17,7 +17,7 @@ import datetime
 import logging
 from typing import Any
 
-from ..estado import INFO, AbrirMenuOutroModo, obter_base_global
+from ..estado import INFO, AbrirMenuOutroModo, base_do_contexto
 from ..texto import normalizar_texto
 from .cores import (
     RESET,
@@ -487,7 +487,7 @@ def executar_acao_menu_comum(acao: str, modulo: str = "") -> str | None:
 
     if acao == _ACAO_ABOUT:
         from ..modulos.sobre import sobre_sistema_tui
-        df_base = obter_base_global()
+        df_base = base_do_contexto()
         if df_base is not None:
             sobre_sistema_tui(df_base)
         else:

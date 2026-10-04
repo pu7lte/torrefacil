@@ -452,7 +452,7 @@ def _tratar_tecla_construtor(
 
     elif tecla == "/":
         from ..pesquisa_global import pesquisa_global_tui
-        pesquisa_global_tui()
+        pesquisa_global_tui(df_base)
 
     elif t_up in ("G", "ENTER"):
         if len(estado.cesta) >= _MINIMO_CIDADES:

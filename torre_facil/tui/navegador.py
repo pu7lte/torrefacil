@@ -15,9 +15,12 @@ Arquitetura:
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from ..estado import INFO, AbrirMenuOutroModo
+if TYPE_CHECKING:
+    import pandas as pd
+
+from ..estado import INFO, AbrirMenuOutroModo, base_do_contexto
 from ..texto import normalizar_texto
 from .cores import (
     RESET,
@@ -405,6 +408,7 @@ def _tratar_tecla_menu(
     acao: str,
     modulo: str,
     teclas_rapidas: set[str],
+    df_base: "pd.DataFrame | None" = None,
 ) -> tuple[str, Any] | None:
     """Trata ação de menu.
 
@@ -412,6 +416,8 @@ def _tratar_tecla_menu(
         acao: Nome da ação.
         modulo: Nome do módulo.
         teclas_rapidas: Conjunto de teclas rápidas.
+        df_base: DataFrame da base (AppContext.df_erbs), usado pela busca
+            global "/" quando disponível.
 
     Returns:
         Tupla ``(tipo, valor)`` ou None.
@@ -437,7 +443,7 @@ def _tratar_tecla_menu(
 
     if acao_menu == "GLOBAL_SEARCH":
         from ..pesquisa_global import pesquisa_global_tui
-        pesquisa_global_tui()
+        pesquisa_global_tui(df_base)
         return None
 
     return ("ACAO_MENU", acao_menu)
@@ -528,6 +534,7 @@ def navegador_tui(
     cursor_inicial: int = 0,
     scroll_inicial: int = 0,
     permitir_esc_voltar: bool = True,
+    df_base: "pd.DataFrame | None" = None,
 ) -> tuple[str, Any, int, int]:
     """Navegador genérico de listas.
 
@@ -543,6 +550,8 @@ def navegador_tui(
         cursor_inicial: Posição inicial do cursor.
         scroll_inicial: Offset inicial de scroll.
         permitir_esc_voltar: Se True, ESC volta.
+        df_base: DataFrame da base (AppContext.df_erbs) para a busca
+            global "/". Se omitido, usa o contexto ativo registrado.
 
     Returns:
         Tupla ``(acao, dados, pos_cursor, offset_scroll)``.
@@ -552,6 +561,9 @@ def navegador_tui(
         KeyboardInterrupt: Se usuário pressionar X.
     """
     INFO.modulo_atual = modulo
+
+    if df_base is None:
+        df_base = base_do_contexto()
 
     if subcabecalho_fixo is None:
         subcabecalho_fixo = []
@@ -670,7 +682,7 @@ def navegador_tui(
             continue
 
         if cat is not None:
-            resultado = _tratar_tecla_menu(t_up, modulo, teclas_rapidas)
+            resultado = _tratar_tecla_menu(t_up, modulo, teclas_rapidas, df_base)
             if resultado is not None:
                 tipo, valor = resultado
                 if tipo == _ACAO_LOGO:
@@ -688,7 +700,7 @@ def navegador_tui(
         # Pesquisa global
         if tecla == "/":
             from ..pesquisa_global import pesquisa_global_tui
-            pesquisa_global_tui()
+            pesquisa_global_tui(df_base)
             continue
 
         # Filtro ativo

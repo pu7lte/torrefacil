@@ -26,7 +26,7 @@ from typing import Any, Final
 import numpy as np
 import pandas as pd
 
-from .estado import obter_base_global
+from .estado import base_do_contexto
 from .texto import normalizar_texto
 from .tui.cores import (
     RESET,
@@ -307,7 +307,7 @@ def pesquisa_global_tui(
         df_erbs: DataFrame da base (opcional; usa base global se None).
         consulta_inicial: Query inicial (opcional).
     """
-    df = df_erbs if df_erbs is not None else obter_base_global()
+    df = df_erbs if df_erbs is not None else base_do_contexto()
 
     if df is None or df.empty:
         alerta_tui(
