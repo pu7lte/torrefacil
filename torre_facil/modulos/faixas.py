@@ -14,7 +14,7 @@ from typing import Any
 
 import pandas as pd
 
-from ..dicionarios import obter_opcoes_uf
+from ..dicionarios import DICIONARIOS, carregar_globais, obter_opcoes_uf
 from ..painel import painel_interativo_municipio, salvar_csv_tui
 from ..texto import normalizar_texto
 from ..tui.cores import CAIXA_TEXTO, CAIXA_TITULO
@@ -118,6 +118,16 @@ def _selecionar_uf(df: pd.DataFrame) -> str | None:
     Returns:
         UF selecionada (vazio = Brasil inteiro), ou None se cancelado.
     """
+    # Opções fixas: Brasil inteiro (consolidado) + os 27 estados.
+    # ✅ CORREÇÃO: garante que os dicionários estão carregados ANTES de montar
+    # a lista — antes, se DICIONARIOS estivesse vazio no momento da chamada,
+    # a lista ficava apenas com "BRASIL INTEIRO" e nenhum estado aparecia.
+    if not DICIONARIOS.get("ufs_brasil"):
+        carregar_globais()
+
+    def opcoes_uf(_valores=None):
+        return obter_opcoes_uf(True, "BRASIL INTEIRO (CONSOLIDADO)")
+
     res = formulario_tui(
         modulo=_MODULO,
         titulo_janela="ANÁLISE POR FAIXA DE FREQUÊNCIA",
@@ -127,10 +137,10 @@ def _selecionar_uf(df: pd.DataFrame) -> str | None:
             "tipo": "droplist",
             "largura": 30,
             "padrao": "",
-            "opcoes": obter_opcoes_uf(True, "BRASIL INTEIRO (CONSOLIDADO)"),
+            "opcoes": opcoes_uf,
             "dica": (
-                "Digite a sigla (ex.: SP) ou deixe em branco para Brasil. "
-                "F2/Espaço abre a lista."
+                "Digite a sigla (ex.: SP), deixe em branco para Brasil ou "
+                "pressione F2 e escolha na lista (Brasil + 27 UFs)."
             ),
         }],
         instrucoes_topo=[
@@ -141,7 +151,17 @@ def _selecionar_uf(df: pd.DataFrame) -> str | None:
     if res is None:
         return None
 
-    return res.get("uf", "")
+    uf = res.get("uf", "").strip().upper()
+
+    # Proteção contra rótulos selecionados por digitação direta (ex.: o
+    # usuário teclou "SP" com a droplist fechada). Normaliza para a sigla.
+    if uf and uf not in {u for u, _ in opcoes_uf()}:
+        for val, rot in opcoes_uf():
+            if rot.upper() == uf or normalizar_texto(rot) == normalizar_texto(uf):
+                uf = val
+                break
+
+    return uf
 
 
 # ---------------------------------------------------------------------------

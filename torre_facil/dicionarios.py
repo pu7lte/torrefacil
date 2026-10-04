@@ -490,6 +490,14 @@ def obter_opcoes_uf(
         >>> ('SP', 'SP') in opcoes
         True
     """
+    # ✅ CORREÇÃO: auto-carrega os dicionários se necessário — evita listas
+    # vazias quando o módulo é usado antes da carga global (ex.: análise por
+    # faixa mostrava só "Brasil inteiro" e nenhum estado).
+    if not DICIONARIOS.get("ufs_brasil"):
+        try:
+            carregar_globais()
+        except Exception:  # pragma: no cover - nunca deve travar a UI
+            pass
     ufs = sorted(str(u) for u in DICIONARIOS.get("ufs_brasil", []))
     opcoes: list[tuple[str, str]] = []
 
