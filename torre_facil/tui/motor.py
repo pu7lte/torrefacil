@@ -39,16 +39,10 @@ def ajustar_texto_puro(texto, largura, alinhamento="esq", truncar=True):
     
     if len(limpo) > largura:
         if truncar and largura > 3:
-            # Truncamento em limite de palavra quando possível: corta em um
-            # espaço dentro da área disponível (largura - 3, reservada ao
-            # sufixo "..."). Se não houver espaço utilizável, corta no meio.
-            disponivel = largura - 3
-            espaco = limpo.rfind(" ", 0, disponivel + 1)
-            if espaco > 0:
-                prefixo = limpo[:espaco]
-            else:
-                prefixo = limpo[:disponivel]
-            limpo = (prefixo + "...")[:largura]
+            # Truncamento simples: mantém exatamente `largura` caracteres,
+            # com sufixo "..." sempre ao final (sem cortar em limite de
+            # palavra nem completar com espaços).
+            limpo = limpo[:largura - 3] + "..."
         else:
             limpo = limpo[:largura]
     

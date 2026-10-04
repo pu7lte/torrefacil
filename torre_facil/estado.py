@@ -175,34 +175,92 @@ class AppContext:
 
 
 # ---------------------------------------------------------------------------
-# Compatibilidade com código legado (REMOVER após migração completa)
+# Registro central do contexto da aplicação (substitui estado global legado)
 # ---------------------------------------------------------------------------
 
-# ⚠️ DEPRECATED: Mantido apenas para compatibilidade durante a migração.
+_CTX_ATIVO: AppContext | None = None
+
+
+def definir_contexto(ctx: "AppContext | None") -> None:
+    """Registra o ``AppContext`` ativo da aplicação.
+
+    Deve ser chamado uma única vez, logo após o carregamento da base
+    (ex.: em ``main``), e sempre que a base for recarregada/substituída.
+    Todos os módulos que precisam da base sem recebê-la como parâmetro
+    (busca global "/", menus, janelas, navegador) consultam este registro
+    via :func:`obter_contexto`.
+
+    Args:
+        ctx: Instância de ``AppContext`` com ``df_erbs`` preenchido, ou
+            ``None`` para desativar o contexto atual.
+    """
+    global _CTX_ATIVO
+    _CTX_ATIVO = ctx
+    if ctx is not None:
+        # Espelha estatísticas no estado legado (INFO) para telas antigas.
+        st = ctx.stats
+        INFO.ufs = st.ufs
+        INFO.municipios = st.municipios
+        INFO.erbs = st.erbs
+        INFO.setores = st.setores
+        INFO.bairros_unificados = st.bairros_unificados
+        INFO.data_atualizacao = st.data_atualizacao
+        INFO.origem = st.origem
+        INFO.podio_completo = st.podio_completo
+        INFO.podio_contexto = st.podio_contexto
+        INFO.base = ctx.df_erbs
+        logger.info("Contexto da aplicação registrado (AppContext ativo).")
+
+
+def obter_contexto() -> "AppContext | None":
+    """Retorna o ``AppContext`` ativo, ou ``None`` se ainda não definido."""
+    return _CTX_ATIVO
+
+
+def base_do_contexto() -> "pd.DataFrame | None":
+    """Retorna ``ctx.df_erbs`` do contexto ativo (ou ``None``).
+
+    Helper para chamadas simples do tipo::
+
+        df = base_do_contexto()
+        if df is None or df.empty: ...
+
+    Substitui as antigas funções deprecadas ``definir_base_global()`` /
+    ``obter_base_global()``.
+    """
+    ctx = _CTX_ATIVO
+    if ctx is not None and ctx.df_erbs is not None:
+        return ctx.df_erbs
+    # Fallback de compatibilidade: bases registradas diretamente em INFO.base
+    # (ex.: carregadas por caminhos legados/caches antigos).
+    return getattr(INFO, "base", None)
+
+
+# ---------------------------------------------------------------------------
+# Compatibilidade com código legado (shims — sem warnings de deprecação)
+# ---------------------------------------------------------------------------
+
 # ``EstadoSistema`` é o nome histórico da classe de estado global; hoje os
-# campos vivem em ``EstatisticasBase``. Use AppContext em vez disso.
+# campos vivem em ``EstatisticasBase``. Prefira ``AppContext`` em código novo.
 EstadoSistema = EstatisticasBase
 
 INFO = EstadoSistema()
 
-_DF_BASE_GLOBAL: pd.DataFrame | None = None
-
 
 def definir_base_global(df_erbs: pd.DataFrame) -> None:
-    """Define a base global de dados.
+    """Atualiza a base do contexto ativo (shim de compatibilidade).
 
-    .. deprecated:: 10.0
-        Use ``AppContext`` em vez de estado global.
+    Se um ``AppContext`` estiver registrado via :func:`definir_contexto`,
+    ``ctx.df_erbs`` (e ``INFO.base``) são atualizados. Caso contrário, a
+    base fica registrada em ``INFO.base`` até o contexto ser criado.
 
     Args:
         df_erbs: DataFrame com a base de estações.
     """
-    global _DF_BASE_GLOBAL
-    _DF_BASE_GLOBAL = df_erbs
-    INFO.base = df_erbs  # Backup da base no estado global (pesquisa global)
-    logger.debug(
-        "definir_base_global() está deprecated. Use AppContext em vez disso."
-    )
+    ctx = _CTX_ATIVO
+    if ctx is not None:
+        ctx.df_erbs = df_erbs
+    INFO.base = df_erbs
     try:
         from .pesquisa_global import invalidar_cache_pesquisa
         invalidar_cache_pesquisa()
@@ -210,23 +268,13 @@ def definir_base_global(df_erbs: pd.DataFrame) -> None:
         logger.debug("pesquisa_global não disponível; cache não invalidado.")
 
 
-def obter_base_global() -> pd.DataFrame | None:
-    """Retorna a base global de dados.
+def obter_base_global() -> "pd.DataFrame | None":
+    """Retorna a base de estações (shim de compatibilidade).
 
-    .. deprecated:: 10.0
-        Use ``AppContext.df_erbs`` em vez disso.
+    Equivalente a :func:`base_do_contexto`: prefira receber
+    ``AppContext.df_erbs`` explicitamente em código novo.
 
     Returns:
         DataFrame com a base de estações, ou None se não carregada.
     """
-    if _DF_BASE_GLOBAL is not None:
-        return _DF_BASE_GLOBAL
-    # Fallback: a base pode ter sido registrada apenas em INFO.base
-    # (ex.: carregada via cache/CSV sem passar por definir_base_global).
-    base_info = getattr(INFO, "base", None)
-    if base_info is not None:
-        logger.debug(
-            "obter_base_global(): usando fallback INFO.base "
-            "(definir_base_global() não foi chamado)."
-        )
-    return base_info
+    return base_do_contexto()

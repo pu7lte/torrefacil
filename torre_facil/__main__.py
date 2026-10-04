@@ -193,6 +193,18 @@ def main() -> int:
         df_erbs, texto_status = inicializar_base_com_cache()
         logger.info("Base carregada: %d registros.", len(df_erbs))
 
+        # 2.1) Registra o AppContext ativo — módulos que precisam da base
+        # sem recebê-la como parâmetro (busca global "/", menus, janelas)
+        # consultam ctx.df_erbs via estado.obter_contexto().
+        from .estado import AppContext, definir_contexto, INFO as _INFO
+        ctx = AppContext(
+            df_erbs=df_erbs,
+            resumo_status=texto_status,
+            modo=modo,
+            stats=_INFO,
+        )
+        definir_contexto(ctx)
+
         # 3) Novidades (se a base mudou desde a última compilação)
         _mostrar_novidades_se_houver()
 

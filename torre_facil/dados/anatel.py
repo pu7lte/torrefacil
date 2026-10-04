@@ -1196,6 +1196,8 @@ def _atualizar_telemetria_global(
 
     # Registra a base no estado global para módulos que consultam a base
     # sem receber o DataFrame como parâmetro (busca global "/", menus, etc.).
+    # Se um AppContext já estiver registrado, atualiza ctx.df_erbs; caso
+    # contrário, guarda em INFO.base até o contexto ser criado em main().
     from ..estado import definir_base_global
     definir_base_global(df_erbs)
 
