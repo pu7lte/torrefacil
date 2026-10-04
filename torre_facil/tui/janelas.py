@@ -645,14 +645,17 @@ def formulario_tui(modulo, titulo_janela, campos, instrucoes_topo=None,
                     exib = obter_rotulo_opcao(c, val_atual)
                 else:
                     exib = obter_rotulo_opcao(c, "")
+                # ✅ CORREÇÃO: exibir o rótulo COMPLETO (ex.: "BRASIL INTEIRO
+                # (CONSOLIDADO)") em vez de cortar a cabeça do texto. Se não
+                # couber no campo, trunca com reticências preservando o início.
                 if i == idx_campo:
-                    vis = exib[-(larg_inp - 4):] if len(exib) >= larg_inp - 3 else exib
-                    preench = "_" * max(0, larg_inp - 3 - len(vis) - 1)
-                    caixa_inp = f"{cor_estilo}[{vis}█{preench}▼]{C.CAIXA_BORDA}"
+                    disp = max(1, larg_inp - 5)  # [ + vis + █ + preench + ▼ ]
+                    vis = ajustar_texto_puro(exib, disp, "esq")
+                    caixa_inp = f"{cor_estilo}[{vis}█▼]{C.CAIXA_BORDA}"
                 else:
-                    vis = exib[-(larg_inp - 3):] if len(exib) >= larg_inp - 3 else exib
-                    preench = "_" * max(0, larg_inp - 3 - len(vis))
-                    caixa_inp = f"{cor_estilo}[{vis}{preench}▼]{C.CAIXA_BORDA}"
+                    disp = max(1, larg_inp - 4)
+                    vis = ajustar_texto_puro(exib, disp, "esq")
+                    caixa_inp = f"{cor_estilo}[{vis} ▼]{C.CAIXA_BORDA}"
             else:  # texto puro
                 if len(val_atual) >= larg_inp:
                     val_vis = val_atual[-(larg_inp - 1):]
