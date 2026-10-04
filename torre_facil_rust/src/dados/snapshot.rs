@@ -132,15 +132,14 @@ pub fn snapshot_vazio(total_setores: i64, data_base: &str) -> Value {
 /// Data/hora atual em ISO-8601 com segundos (equivalente a
 /// `datetime.now().isoformat(timespec="seconds")` — horário local).
 pub fn agora_iso8601() -> String {
-    let secs = now_epoch_secs();
-    let (y, mo, d, hh, mm, ss) = broken_local(secs);
-    format!("{y:04}-{mo:02}-{d:02}T{hh:02}:{mm:02}:{ss:02}")
+    let g = quebrar_local(now_epoch_secs());
+    format!("{}-{}-{}T{}:{}:{}", g[0], g[1], g[2], g[3], g[4], g[5])
 }
 
 /// Data atual em DD/MM/AAAA.
 pub fn hoje_data_br() -> String {
-    let (y, mo, d, _, _, _) = broken_local(now_epoch_secs());
-    format!("{d:02}/{mo:02}/{y:04}")
+    let g = quebrar_local(now_epoch_secs());
+    format!("{:02}/{:02}/{:04}", g[2], g[1], g[0])
 }
 
 fn now_epoch_secs() -> i64 {
@@ -150,20 +149,22 @@ fn now_epoch_secs() -> i64 {
         .unwrap_or(0)
 }
 
-/// Conversão epoch → data local (mesma zona do sistema, como datetime.now()).
-pub fn broken_local(secs: i64) -> (i64, i64, i64, i64, i64, i64) {
+/// Conversão epoch → data local como vetor `[ano, mês, dia, hora, min, seg]`
+/// (mesma convenção de `datetime.fromtimestamp(...)` seguida de indexação;
+/// equivalente a `time.struct_time` fatiado). Mesma zona do sistema.
+pub fn quebrar_local(secs: i64) -> Vec<i64> {
     unsafe {
         let t: libc::time_t = secs as libc::time_t;
         let mut tmv: libc::tm = std::mem::zeroed();
         libc::localtime_r(&t, &mut tmv);
-        (
+        vec![
             tmv.tm_year as i64 + 1900,
             tmv.tm_mon as i64 + 1,
             tmv.tm_mday as i64,
             tmv.tm_hour as i64,
             tmv.tm_min as i64,
             tmv.tm_sec as i64,
-        )
+        ]
     }
 }
 
