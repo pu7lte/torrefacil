@@ -276,6 +276,16 @@ pub fn info_snapshot() -> EstatisticasBase {
     INFO.lock().unwrap().clone()
 }
 
+/// Substitui o conteúdo do estado legado INFO (`INFO.<campo> = ...` em bloco).
+pub fn definir_info(novo: EstatisticasBase) {
+    let mut info = INFO.lock().unwrap();
+    let base_preservada = info.base.take();
+    *info = novo;
+    if info.base.is_none() {
+        info.base = base_preservada;
+    }
+}
+
 /// `INFO.bairros_unificados = v`
 pub fn info_set_bairros_unificados(v: i64) {
     INFO.lock().unwrap().bairros_unificados = v;
