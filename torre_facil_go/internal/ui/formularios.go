@@ -339,6 +339,10 @@ func dedup(regs []data.Erb) []data.Erb {
 }
 
 func (m Model) teclaForm(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.form == nil {
+		m.tela = TelaMenu
+		return m, nil
+	}
 	done, cancel, cmd := m.form.Update(k)
 	if cancel {
 		m.form = nil
@@ -352,5 +356,8 @@ func (m Model) teclaForm(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) viewForm() string {
+	if m.form == nil {
+		return " Formulário indisponível "
+	}
 	return m.form.View(m.width)
 }

@@ -24,6 +24,14 @@ const (
 	TelaFaixaResultado
 	TelaSobre
 	TelaBusca
+	TelaForm
+	TelaPainel
+	TelaListaErbs
+	TelaComparador
+	TelaChips
+	TelaRodovias
+	TelaFAQ
+	TelaManutencao
 )
 
 // Modo replica os modos loja/analista do Python.
@@ -109,6 +117,42 @@ type Model struct {
 	busca      textinput.Model
 	buscaRes   []data.Erb
 	buscaIdx   int
+
+	// formulário (formulario_tui legado)
+	form     *FormModel
+	formAcao string
+
+	// lista de ERBs (navegador_tui legado)
+	listaTit    string
+	listaRegs   []data.Erb
+	listaIdx    int
+	listaScroll int
+	listaVoltar Tela
+
+	// painel interativo por município
+	painelNome     string
+	painelUF       string
+	painelRegs     []data.Erb
+	painelVisao    int
+	painelIdx      int
+	painelScroll   int
+	painelFiltro   string
+	painelExpandido bool
+	painelVoltar   Tela
+
+	// comparador de operadoras
+	compCidades [][2]string
+	rankIdx     int
+
+	// indicador de chips
+	chipsEscopo string
+	chipsRegs   []data.Erb
+
+	// rodovias / FAQ / manutenção
+	rodoUF   string
+	rodoIdx  int
+	faqIdx   int
+	manutIdx int
 }
 
 // NewModel cria o modelo inicial.
@@ -217,6 +261,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.agora = time.Time(msg)
 		return m, tick()
 
+	case rodapeMsg:
+		m.msgRodape = string(msg)
+		return m, nil
+
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
 		return m, nil
@@ -232,6 +280,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.atualizarBusca()
 		return m, cmd
 	}
+	_ = imprimivelVazio
 	return m, nil
 }
 
@@ -264,6 +313,23 @@ func (m Model) tratarTecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 	case TelaSobre:
+		if k.Type == tea.KeyEscape || k.Type == tea.KeyEnter {
+			m.tela = TelaMenu
+		}
+		return m, nil
+	case TelaForm:
+		return m.teclaForm(k)
+	case TelaPainel:
+		return m.teclaPainel(k)
+	case TelaListaErbs:
+		return m.teclaListaErbs(k)
+	case TelaRodovias:
+		return m.teclaRodovias(k)
+	case TelaFAQ:
+		return m.teclaFAQ(k)
+	case TelaManutencao:
+		return m.teclaManutencao(k)
+	case TelaComparador, TelaChips:
 		if k.Type == tea.KeyEscape || k.Type == tea.KeyEnter {
 			m.tela = TelaMenu
 		}
@@ -328,9 +394,8 @@ func (m Model) executar(codigo string) (tea.Model, tea.Cmd) {
 		m.menuIdx = 0
 		m.msgRodape = "TORRE FÁCIL — tela de logo (use o menu abaixo)."
 		m.tela = TelaMenu
-	case "0":
-		m.msgRodape = "Manutenção/Cache: use a versão Python legada."
-		m.tela = TelaMenu
+	case "0", "M":
+		m.abrirManutencao()
 	case "1", "2", "R": // raio-x cidade (ranking estado vira lista de UF aqui)
 		m.ufs = append([]string{"(BRASIL - todas as UFs)"}, m.Snap.UFs()...)
 		m.ufIdx = 0
@@ -345,6 +410,22 @@ func (m Model) executar(codigo string) (tea.Model, tea.Cmd) {
 		m.tela = TelaFaixaUf
 	case "9", "S":
 		m.tela = TelaSobre
+	case "F":
+		m.abrirFormRaioX()
+	case "P":
+		m.abrirFormAvancada()
+	case "E":
+		m.abrirFormExplorador()
+	case "K":
+		m.abrirFormKML()
+	case "D":
+		m.abrirFormChips()
+	case "C":
+		m.abrirComparadorManual()
+	case "O":
+		m.abrirRodovias()
+	case "Q", "H":
+		m.abrirFAQ()
 	default:
 		m.msgRodape = "Módulo ainda disponível apenas na TUI Python legada."
 	}
@@ -585,6 +666,22 @@ func (m Model) viewDropdown() string {
 
 func (m Model) viewTela() string {
 	switch m.tela {
+	case TelaForm:
+		return m.viewForm()
+	case TelaPainel:
+		return m.viewPainel()
+	case TelaListaErbs:
+		return m.viewListaErbs()
+	case TelaComparador:
+		return m.viewComparador()
+	case TelaChips:
+		return m.viewChips()
+	case TelaRodovias:
+		return m.viewRodovias()
+	case TelaFAQ:
+		return m.viewFAQ()
+	case TelaManutencao:
+		return m.viewManutencao()
 	case TelaMenu:
 		var ls []string
 		ls = append(ls, CaixaTitulo.Render(pad(" MENU PRINCIPAL ", m.width)))

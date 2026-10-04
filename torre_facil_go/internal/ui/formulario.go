@@ -73,8 +73,16 @@ func (f *FormModel) focar(i int) {
 func (f *FormModel) Update(k tea.KeyMsg) (done bool, cancel bool, cmd tea.Cmd) {
 	i := f.campoAtual
 	c := f.Campos[i]
+	if k.Type == tea.KeyF12 {
+		f.F12Ativo = !f.F12Ativo
+		return false, false, nil
+	}
 	switch k.Type {
 	case tea.KeyEscape:
+		if f.listaAberta {
+			f.listaAberta = false
+			return false, false, nil
+		}
 		return true, true, nil
 	case tea.KeyEnter, tea.KeyTab:
 		if i+1 < len(f.Campos) {

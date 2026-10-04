@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/charmbracelet/lipgloss"
+
 	tea "github.com/charmbracelet/bubbletea"
 
 	"github.com/torrefacil/torre-facil-go/internal/data"
@@ -25,7 +27,7 @@ func (m *Model) abrirPainel(regs []data.Erb, nome, uf, filtro string) {
 	m.painelVisao = 1
 	m.painelIdx = 0
 	m.painelScroll = 0
-	m.painelExpandido = ""
+	m.painelExpandido = false
 	m.tela = TelaPainel
 }
 
@@ -34,12 +36,13 @@ func (m Model) teclaPainel(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyEscape:
 		m.tela = m.painelVoltar
 		return m, nil
-	case tea.KeyRune, tea.KeyEnter:
+	case tea.KeyEnter:
 		up := strings.ToUpper(k.String())
 		switch up {
 		case "1", "2", "3", "4":
 			m.painelVisao = int(up[0] - '0')
-			m.painelIdx, m.painelScroll, m.painelExpandido = 0, 0, ""
+			m.painelIdx, m.painelScroll = 0, 0
+				m.painelExpandido = false
 			return m, nil
 		case "E":
 			return m, m.exportarPainel()
@@ -66,11 +69,11 @@ func (m Model) teclaPainel(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyUp:
 		m.painelIdx = maxInt(0, m.painelIdx-1)
 	case tea.KeyDown:
-		m.painelIdx = minInt(n-1, m.painelIdx+1)
+		m.painelIdx = minint(n-1, m.painelIdx+1)
 	case tea.KeyPgUp:
 		m.painelIdx = maxInt(0, m.painelIdx-linhasVisiveis)
 	case tea.KeyPgDown:
-		m.painelIdx = minInt(n-1, m.painelIdx+linhasVisiveis)
+		m.painelIdx = minint(n-1, m.painelIdx+linhasVisiveis)
 	case tea.KeyHome:
 		m.painelIdx = 0
 	case tea.KeyEnd:
@@ -243,11 +246,11 @@ func (m Model) teclaListaErbs(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyUp:
 		m.listaIdx = maxInt(0, m.listaIdx-1)
 	case tea.KeyDown:
-		m.listaIdx = minInt(n-1, m.listaIdx+1)
+		m.listaIdx = minint(n-1, m.listaIdx+1)
 	case tea.KeyPgUp:
 		m.listaIdx = maxInt(0, m.listaIdx-linhasVisiveis)
 	case tea.KeyPgDown:
-		m.listaIdx = minInt(n-1, m.listaIdx+linhasVisiveis)
+		m.listaIdx = minint(n-1, m.listaIdx+linhasVisiveis)
 	}
 	if m.listaIdx < m.listaScroll {
 		m.listaScroll = m.listaIdx
@@ -294,7 +297,7 @@ func (m Model) viewRanking() string {
 	sort.Slice(pares, func(i, j int) bool { return pares[i].V > pares[j].V })
 	var ls []string
 	ls = append(ls, CaixaTitulo.Render(pad(" RANKING / RAIO-X POR ESTADO ", m.width)))
-	medalhas := []lipglossStyleAlias{CorOuro, CorPrata, CorBronze}
+	medalhas := []lipgloss.Style{CorOuro, CorPrata, CorBronze}
 	for i, p := range pares {
 		st := CaixaTexto
 		linha := fmt.Sprintf(" %2dº  %-4s %8d ERBs", i+1, p.K, p.V)
@@ -424,7 +427,7 @@ func (m Model) viewChips() string {
 			max4 = v4
 		}
 	}
-	medalhas := []lipglossStyleAlias{CorOuro, CorPrata, CorBronze}
+	medalhas := []lipgloss.Style{CorOuro, CorPrata, CorBronze}
 	for i, a := range aggs {
 		v5, v4 := countUniq(cont5, a.Nome), countUniq(cont4, a.Nome)
 		var pontos []string
