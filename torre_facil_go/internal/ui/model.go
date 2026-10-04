@@ -33,6 +33,7 @@ const (
 	TelaRodovias
 	TelaFAQ
 	TelaManutencao
+	TelaRanking
 )
 
 // Modo replica os modos loja/analista do Python.
@@ -129,6 +130,7 @@ type Model struct {
 	listaIdx    int
 	listaScroll int
 	listaVoltar Tela
+	favIdx      int // seleção na tela de favoritos (modo loja)
 
 	// painel interativo por município
 	painelNome     string
@@ -354,6 +356,29 @@ func (m Model) tratarTecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.tela = TelaMenu
 		}
 		return m, nil
+	case TelaRanking:
+		pares := m.ufsOrdenadasPorQtd()
+		switch k.Type {
+		case tea.KeyEscape:
+			m.tela = TelaMenu
+		case tea.KeyUp:
+			m.rankIdx = (m.rankIdx - 1 + len(pares)) % maxInt(1, len(pares))
+		case tea.KeyDown:
+			m.rankIdx = (m.rankIdx + 1) % maxInt(1, len(pares))
+		case tea.KeyEnter:
+			if len(pares) > 0 && m.rankIdx < len(pares) {
+				uf := pares[m.rankIdx]
+				m.ufSel = uf
+				m.municipios = m.Snap.MunicipiosPorUF(uf)
+				if len(m.municipios) == 0 {
+					m.msgRodape = "Nenhum município na base para esta UF."
+					return m, nil
+				}
+				m.munIdx = 0
+				m.tela = TelaRaioXMun
+			}
+		}
+		return m, nil
 	case TelaBusca:
 		switch k.Type {
 		case tea.KeyEscape:
@@ -407,7 +432,16 @@ func (m Model) teclaMenu(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// executar replica exatamente _despachar_analista / _despachar_loja de main.py.
 func (m Model) executar(codigo string) (tea.Model, tea.Cmd) {
+	if m.modo == ModoLoja {
+		return m.executarLoja(codigo)
+	}
+	return m.executarAnalista(codigo)
+}
+
+// executarAnalista — espelho 1:1 de _despachar_analista (main.py).
+func (m Model) executarAnalista(codigo string) (tea.Model, tea.Cmd) {
 	switch codigo {
 	case "X":
 		return m, tea.Quit
@@ -415,40 +449,68 @@ func (m Model) executar(codigo string) (tea.Model, tea.Cmd) {
 		m.menuIdx = 0
 		m.tela = TelaLogo
 		m.msgRodape = "X = Sair  │  ESC = Ficar no logo  │  ENTER = Abrir o menu"
-	case "0", "M":
-		m.abrirManutencao()
-	case "1", "2", "R": // raio-x cidade (ranking estado vira lista de UF aqui)
-		m.ufs = append([]string{"(BRASIL - todas as UFs)"}, m.Snap.UFs()...)
-		m.ufIdx = 0
-		if codigo == "2" {
+
+	case "1": // raio_x.raio_x_cidade
+		m.abrirFormRaioX()
+	case "2": // raio_x.raio_x_estado → ranking/pódio por UF
+		if len(m.ufs) == 0 {
 			m.ufs = m.Snap.UFs()
-			m.ufIdx = 0
 		}
-		m.tela = TelaRaioXUf
-	case "A": // análise por faixa: Brasil inteiro + 27 estados
+		m.ufIdx = 0
+		m.tela = TelaRanking
+	case "3": // explorador.pesquisa_guiada_operadora
+		m.abrirFormExplorador()
+	case "4": // comparador.comparador_cidades
+		m.abrirComparadorManual()
+	case "5": // chips.indicador_de_chips
+		m.abrirFormChips()
+	case "6": // rodovias.consultar_estradas
+		m.abrirRodovias()
+	case "7": // avancada.pesquisa_avancada
+		m.abrirFormAvancada()
+	case "8": // kml.exportar_kml
+		m.abrirFormKML()
+	case "A": // faixas.analise_por_faixa: Brasil inteiro + 27 estados
 		m.ufs = append([]string{"Brasil Inteiro (Consolidado)"}, m.Snap.UFs()...)
 		m.faixaIdx = 0
 		m.tela = TelaFaixaUf
-	case "9", "S":
+	case "9": // sobre.sobre_sistema_tui
 		m.tela = TelaSobre
-	case "F":
-		m.abrirFormRaioX()
-	case "P":
-		m.abrirFormAvancada()
-	case "E":
-		m.abrirFormExplorador()
-	case "K":
-		m.abrirFormKML()
-	case "D":
-		m.abrirFormChips()
-	case "C":
-		m.abrirComparadorManual()
-	case "O":
-		m.abrirRodovias()
-	case "Q", "H":
-		m.abrirFAQ()
+	case "0": // menu_gerenciar_cache
+		m.abrirManutencao()
 	default:
-		m.msgRodape = "Módulo ainda disponível apenas na TUI Python legada."
+		m.msgRodape = "Opção indisponível."
+	}
+	return m, nil
+}
+
+// executarLoja — espelho 1:1 de _despachar_loja (main.py).
+func (m Model) executarLoja(codigo string) (tea.Model, tea.Cmd) {
+	switch codigo {
+	case "X":
+		return m, tea.Quit
+	case "V":
+		m.menuIdx = 0
+		m.tela = TelaLogo
+		m.msgRodape = "X = Sair  │  ESC = Ficar no logo  │  ENTER = Abrir o menu"
+	case "1": // consulta_rapida.consulta_rapida
+		m.abrirFormConsulta(codigo)
+	case "2": // comparador_loja.comparador_loja
+		m.abrirFormComparadorLoja(codigo)
+	case "3": // favoritos.favoritos
+		m.abrirFavoritos()
+	case "4": // faq.faq
+		m.abrirFAQ()
+	case "R": // raio_x.raio_x_cidade
+		m.abrirFormRaioX()
+	case "I": // chips.indicador_de_chips
+		m.abrirFormChips()
+	case "S": // sobre.sobre_sistema_tui
+		m.tela = TelaSobre
+	case "0": // menu_gerenciar_cache
+		m.abrirManutencao()
+	default:
+		m.msgRodape = "Opção indisponível."
 	}
 	return m, nil
 }
@@ -705,6 +767,8 @@ func (m Model) viewTela() string {
 		return m.viewFAQ()
 	case TelaManutencao:
 		return m.viewManutencao()
+	case TelaRanking:
+		return m.viewRanking()
 	case TelaMenu:
 		var ls []string
 		ls = append(ls, CaixaTitulo.Render(pad(" MENU PRINCIPAL ", m.width)))
