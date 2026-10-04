@@ -32,22 +32,43 @@ func (m *Model) abrirPainel(regs []data.Erb, nome, uf, filtro string) {
 }
 
 func (m Model) teclaPainel(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Teclas rápidas do navegador legado: {"1","2","3","4","5","6","7","P"}
+	if len(k.String()) == 1 && k.Type == tea.KeyRunes {
+		up := strings.ToUpper(k.String())
+		switch up {
+		case "1", "2", "3", "4": // trocar de visão (legado: modo_atual = dados)
+			m.painelVisao = int(up[0] - '0')
+			m.painelIdx, m.painelScroll = 0, 0
+			m.painelExpandido = false
+			return m, nil
+		case "5": // Catálogo de Bairros
+			vistos := map[string]bool{}
+			var nomes []string
+			for _, r := range m.painelRegs {
+				if !vistos[r.Bairro] {
+					vistos[r.Bairro] = true
+					nomes = append(nomes, r.Bairro)
+				}
+			}
+			sort.Strings(nomes)
+			m.abrirListaERBs("CATÁLOGO DE BAIRROS — "+strings.Join(nomes, ", "), m.painelRegs, TelaPainel)
+			return m, nil
+		case "6": // Salvar CSV
+			return m, m.exportarPainel()
+		case "P": // Pódio completo
+			m.msgRodape = m.textoPodio()
+			return m, nil
+		case "7":
+			m.tela = m.painelVoltar
+			return m, nil
+		}
+	}
 	switch k.Type {
 	case tea.KeyEscape:
 		m.tela = m.painelVoltar
 		return m, nil
 	case tea.KeyEnter:
-		up := strings.ToUpper(k.String())
-		switch up {
-		case "1", "2", "3", "4":
-			m.painelVisao = int(up[0] - '0')
-			m.painelIdx, m.painelScroll = 0, 0
-				m.painelExpandido = false
-			return m, nil
-		case "E":
-			return m, m.exportarPainel()
-		}
-		if k.Type == tea.KeyEnter && m.painelVisao == 3 {
+		if m.painelVisao == 3 {
 			// Enter num bairro abre a lista de ERBs daquele bairro
 			itens := m.itensPainel()
 			if m.painelIdx < len(itens) {

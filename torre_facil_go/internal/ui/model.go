@@ -292,16 +292,34 @@ func (m Model) tratarTecla(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// F10: alterna VISIBILIDADE da barra — uma única vez, sem duplicar
 	// (lição do bug legado: F10 não redesenha nem reabre nada).
 	if k.Type == tea.KeyF10 {
-		m.barraVisivel = !m.barraVisivel
-		if !m.barraVisivel {
-			m.barraAberta = -1
+		if m.barraAberta >= 0 {
+			m.barraAberta = -1 // legado: F10/ESC fecha o dropdown
+			return m, nil
+		}
+		if m.barraVisivel {
+			m.abrirDropdown(0) // legado: barra visível + F10 abre o 1º menu
+		} else {
+			m.barraVisivel = true
+			m.msgRodape = "Barra de menu ativada — F10 abre o menu."
 		}
 		return m, nil
 	}
 
+	// ALT+letra abre/alterna o menu correspondente (legado: indice_menu_por_tecla)
+	if k.Alt && len(k.String()) == 1 && m.tela != TelaBusca && m.tela != TelaForm {
+		novo := indiceMenuPorTecla(k.String(), m.moduloAtual(), string(m.modo))
+		if novo >= 0 {
+			m.abrirDropdown(novo)
+			return m, nil
+		}
+	}
+
 	// dropdown aberto? consome as teclas antes de tudo
 	if m.barraAberta >= 0 {
-		return m.teclaDropdown(k)
+		if nm, cmd, handled := m.teclaBarra(k); handled {
+			return nm, cmd
+		}
+		m.barraAberta = -1
 	}
 
 	switch m.tela {
@@ -681,9 +699,9 @@ func (m Model) View() string {
 
 	// linha 3: barra de menu (F10) — renderizada UMA única vez, largura total
 	if m.barraVisivel {
-		b.WriteString(m.viewBarraMenu() + "\n")
+		b.WriteString(m.viewBarraPortada() + "\n")
 		if m.barraAberta >= 0 {
-			b.WriteString(m.viewDropdown() + "\n")
+			b.WriteString(m.viewDropdownAncorado() + "\n")
 		}
 	}
 
