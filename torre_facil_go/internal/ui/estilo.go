@@ -40,9 +40,9 @@ var (
 	CorDemais = lipgloss.NewStyle().Foreground(c256(250)).Background(c256(17))
 
 	// Barra de menu
-	MenuBarra      = lipgloss.NewStyle().Foreground(c256(232)).Background(c256(250))
+	MenuBarra      = lipgloss.NewStyle().Inline(true).Foreground(c256(232)).Background(c256(250))
 	MenuBarraHot   = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(c256(24)).Background(c256(250))
 	MenuBarraAtivo = lipgloss.NewStyle().Bold(true).Foreground(c256(231)).Background(c256(232))
-	MenuItem       = lipgloss.NewStyle().Foreground(c256(232)).Background(c256(250))
-	MenuItemSel    = lipgloss.NewStyle().Bold(true).Foreground(c256(231)).Background(c256(24))
+	MenuItem       = lipgloss.NewStyle().Inline(true).Foreground(c256(232)).Background(c256(250))
+	MenuItemSel    = lipgloss.NewStyle().Inline(true).Bold(true).Foreground(c256(231)).Background(c256(24))
 )
